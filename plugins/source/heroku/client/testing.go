@@ -1,51 +1,47 @@
 package client
 
 import (
-	"context"
-	"fmt"
 	"testing"
 
-	"github.com/cloudquery/plugin-sdk/plugins"
-	"github.com/cloudquery/plugin-sdk/schema"
-	"github.com/cloudquery/plugin-sdk/specs"
+	"github.com/cloudquery/cq-provider-sdk/logging"
+	"github.com/cloudquery/cq-provider-sdk/provider"
+	"github.com/cloudquery/cq-provider-sdk/provider/diag"
+	"github.com/cloudquery/cq-provider-sdk/provider/schema"
+	providertest "github.com/cloudquery/cq-provider-sdk/provider/testing"
+	"github.com/golang/mock/gomock"
+	"github.com/hashicorp/go-hclog"
 )
 
-type TestOptions struct {
-	SkipEmptyJsonB bool
-}
+type TestOptions struct{}
 
-func HerokuMockTestHelper(t *testing.T, table *schema.Table, createService func() (*Services, error), options TestOptions) {
-	t.Helper()
-
+func HerokuMockTestHelper(t *testing.T, table *schema.Table, builder func(*testing.T, *gomock.Controller) HerokuService, _ TestOptions) {
 	table.IgnoreInTests = false
+	t.Helper()
+	ctrl := gomock.NewController(t)
+	cfg := ``
 
-	newTestExecutionClient := func(ctx context.Context, p *plugins.SourcePlugin, spec specs.Source) (schema.ClientMeta, error) {
-		svc, err := createService()
-		if err != nil {
-			return nil, fmt.Errorf("failed to create service %w", err)
-		}
-		var uSpec Spec
-		if err := spec.UnmarshalSpec(&uSpec); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal spec: %w", err)
-		}
-		c := &Client{
-			plugin:   p,
-			Services: svc,
-			projects: []string{"testProject"},
-		}
-
-		return c, nil
-	}
-
-	p := plugins.NewSourcePlugin(
-		table.Name,
-		"dev",
-		[]*schema.Table{
-			table,
+	providertest.TestResource(t, providertest.ResourceTestCase{
+		Provider: &provider.Provider{
+			Name:    "heroku_mock_test_provider",
+			Version: "development",
+			Configure: func(logger hclog.Logger, i interface{}) (schema.ClientMeta, diag.Diagnostics) {
+				c := Client{
+					logger: logging.New(&hclog.LoggerOptions{
+						Level: hclog.Warn,
+					}),
+					Heroku: builder(t, ctrl),
+					Teams:  []string{"test_team"},
+				}
+				return &c, nil
+			},
+			ResourceMap: map[string]*schema.Table{
+				"test_resource": table,
+			},
+			Config: func() provider.Config {
+				return &Config{}
+			},
 		},
-		newTestExecutionClient)
-	plugins.TestSourcePluginSync(t, p, specs.Source{
-		Name:   "dev",
-		Tables: []string{"*"},
+		Config:           cfg,
+		SkipIgnoreInTest: true,
 	})
 }

@@ -5,7 +5,7 @@ package services
 import (
 	"context"
 	"github.com/cloudquery/cloudquery/plugins/source/heroku/client"
-	"github.com/cloudquery/plugin-sdk/schema"
+	"github.com/cloudquery/cq-provider-sdk/provider/schema"
 	"github.com/pkg/errors"
 )
 
@@ -26,9 +26,6 @@ func Stacks() *schema.Table {
 			{
 				Name: "id",
 				Type: schema.TypeString,
-				CreationOptions: schema.ColumnCreationOptions{
-					PrimaryKey: true,
-				},
 			},
 			{
 				Name: "name",
@@ -48,7 +45,7 @@ func Stacks() *schema.Table {
 
 func fetchStacks(ctx context.Context, meta schema.ClientMeta, _ *schema.Resource, res chan<- interface{}) error {
 	c := meta.(*client.Client)
-	v, err := c.Services.Heroku.StackList(ctx, nil)
+	v, err := c.Heroku.StackList(ctx, nil)
 	if err != nil {
 		return errors.WithStack(err)
 	}

@@ -4,7 +4,7 @@ package services
 
 import (
 	"context"
-	"github.com/cloudquery/plugin-sdk/schema"
+	"github.com/cloudquery/cq-provider-sdk/provider/schema"
 	"github.com/cloudquery/cloudquery/plugins/source/heroku/client"
 	"github.com/pkg/errors"
   {{range .Imports}}
@@ -19,7 +19,7 @@ func {{.HerokuStructName | Pluralize }}() *schema.Table {
 
 func fetch{{.HerokuStructName | Pluralize }}(ctx context.Context, meta schema.ClientMeta, _ *schema.Resource, res chan<- interface{}) error {
 	c := meta.(*client.Client)
-	v, err := c.Services.Heroku.{{.HerokuStructName}}List(ctx, nil)
+	v, err := c.Heroku.{{.HerokuStructName}}List(ctx, nil)
 	if err != nil {
 		return errors.WithStack(err)
 	}

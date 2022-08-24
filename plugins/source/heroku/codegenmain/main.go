@@ -46,11 +46,11 @@ func generateResource(r codegen.Resource, mock bool) {
 		log.Fatal(err)
 	}
 	r.Table.Columns = append(r.DefaultColumns, r.Table.Columns...)
-	for i := range r.Table.Columns {
-		if r.Table.Columns[i].Name == "id" {
-			r.Table.Columns[i].Options.PrimaryKey = true
-		}
-	}
+	//for i := range r.Table.Columns {
+	//	if r.Table.Columns[i].Name == "id" {
+	//		r.Table.Columns[i].Options.PrimaryKey = true
+	//	}
+	//}
 	r.Table.Multiplex = "client.NoMultiplex"
 	r.Table.Resolver = "fetch" + inflection.Plural(r.HerokuStructName)
 	mainTemplate := r.Template + ".go.tpl"

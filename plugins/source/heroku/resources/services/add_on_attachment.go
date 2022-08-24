@@ -5,7 +5,7 @@ package services
 import (
 	"context"
 	"github.com/cloudquery/cloudquery/plugins/source/heroku/client"
-	"github.com/cloudquery/plugin-sdk/schema"
+	"github.com/cloudquery/cq-provider-sdk/provider/schema"
 	"github.com/pkg/errors"
 )
 
@@ -30,9 +30,6 @@ func AddOnAttachments() *schema.Table {
 			{
 				Name: "id",
 				Type: schema.TypeString,
-				CreationOptions: schema.ColumnCreationOptions{
-					PrimaryKey: true,
-				},
 			},
 			{
 				Name: "log_input_url",
@@ -60,7 +57,7 @@ func AddOnAttachments() *schema.Table {
 
 func fetchAddOnAttachments(ctx context.Context, meta schema.ClientMeta, _ *schema.Resource, res chan<- interface{}) error {
 	c := meta.(*client.Client)
-	v, err := c.Services.Heroku.AddOnAttachmentList(ctx, nil)
+	v, err := c.Heroku.AddOnAttachmentList(ctx, nil)
 	if err != nil {
 		return errors.WithStack(err)
 	}

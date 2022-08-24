@@ -5,7 +5,7 @@ package services
 import (
 	"context"
 	"github.com/cloudquery/cloudquery/plugins/source/heroku/client"
-	"github.com/cloudquery/plugin-sdk/schema"
+	"github.com/cloudquery/cq-provider-sdk/provider/schema"
 	"github.com/pkg/errors"
 )
 
@@ -46,9 +46,6 @@ func AddOns() *schema.Table {
 			{
 				Name: "id",
 				Type: schema.TypeString,
-				CreationOptions: schema.ColumnCreationOptions{
-					PrimaryKey: true,
-				},
 			},
 			{
 				Name: "name",
@@ -80,7 +77,7 @@ func AddOns() *schema.Table {
 
 func fetchAddOns(ctx context.Context, meta schema.ClientMeta, _ *schema.Resource, res chan<- interface{}) error {
 	c := meta.(*client.Client)
-	v, err := c.Services.Heroku.AddOnList(ctx, nil)
+	v, err := c.Heroku.AddOnList(ctx, nil)
 	if err != nil {
 		return errors.WithStack(err)
 	}

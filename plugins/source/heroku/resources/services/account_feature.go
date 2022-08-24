@@ -5,7 +5,7 @@ package services
 import (
 	"context"
 	"github.com/cloudquery/cloudquery/plugins/source/heroku/client"
-	"github.com/cloudquery/plugin-sdk/schema"
+	"github.com/cloudquery/cq-provider-sdk/provider/schema"
 	"github.com/pkg/errors"
 )
 
@@ -42,9 +42,6 @@ func AccountFeatures() *schema.Table {
 			{
 				Name: "id",
 				Type: schema.TypeString,
-				CreationOptions: schema.ColumnCreationOptions{
-					PrimaryKey: true,
-				},
 			},
 			{
 				Name: "name",
@@ -64,7 +61,7 @@ func AccountFeatures() *schema.Table {
 
 func fetchAccountFeatures(ctx context.Context, meta schema.ClientMeta, _ *schema.Resource, res chan<- interface{}) error {
 	c := meta.(*client.Client)
-	v, err := c.Services.Heroku.AccountFeatureList(ctx, nil)
+	v, err := c.Heroku.AccountFeatureList(ctx, nil)
 	if err != nil {
 		return errors.WithStack(err)
 	}
