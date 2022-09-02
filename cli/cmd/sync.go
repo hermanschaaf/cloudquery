@@ -67,7 +67,7 @@ func syncConnection(ctx context.Context, pm *plugin.PluginManager, specReader *s
 
 	destPlugins := make([]*plugin.DestinationPlugin, len(sourceSpec.Destinations))
 	for i, destination := range sourceSpec.Destinations {
-		spec := specReader.GetDestinatinoByName(destination)
+		spec := specReader.GetDestinationByName(destination)
 		if spec == nil {
 			return fmt.Errorf("failed to find destination %s in source %s", destination, sourceSpec.Name)
 		}
@@ -77,15 +77,12 @@ func syncConnection(ctx context.Context, pm *plugin.PluginManager, specReader *s
 		}
 		defer plugin.Close()
 		destPlugins[i] = plugin
-		if err := destPlugins[i].GetClient().Initialize(ctx, *spec); err != nil {
-			return fmt.Errorf("failed to initialize destination plugin client for %s: %w", destination, err)
-		}
 		tables, err := sourceClient.GetTables(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to get tables for source %s: %w", sourceSpec.Name, err)
 		}
 
-		if err := destPlugins[i].GetClient().Migrate(ctx, tables); err != nil {
+		if err := destPlugins[i].GetClient().Migrate(ctx, *spec, tables); err != nil {
 			return fmt.Errorf("failed to migrate source %s on destination %s : %w", sourceSpec.Name, destination, err)
 		}
 	}
@@ -114,7 +111,11 @@ func syncConnection(ctx context.Context, pm *plugin.PluginManager, specReader *s
 			_ = bar.Add(1)
 			totalResources++
 			for i, destination := range sourceSpec.Destinations {
-				if err := destPlugins[i].GetClient().Write(ctx, resource.TableName, resource.Data); err != nil {
+				spec := specReader.GetDestinationByName(destination)
+				if spec == nil {
+					return fmt.Errorf("failed to find destination %s in source %s", destination, sourceSpec.Name)
+				}
+				if err := destPlugins[i].GetClient().Write(ctx, *spec, resource.TableName, resource.Data); err != nil {
 					failedWrites++
 					log.Error().Err(err).Msgf("failed to write resource for %s->%s", sourceSpec.Name, destination)
 				}

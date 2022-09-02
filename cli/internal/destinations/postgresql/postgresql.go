@@ -62,43 +62,25 @@ const sqlDropTable = "drop table if exists "
 
 const isTableExistSQL = "select count(*) from information_schema.tables where table_name = $1"
 
-func NewClient(logger zerolog.Logger) *Client {
-	return &Client{
+func NewClient(ctx context.Context, logger zerolog.Logger, spec specs.Destination) (*Client, error) {
+	var specPostgreSql PostgreSqlSpec
+	p := &Client{
 		logger: logger.With().Str("module", "pg-dest").Logger(),
 	}
-}
-
-func (*Client) Name() string {
-	return "postgresql"
-}
-
-func (*Client) Version() string {
-	// change it with builtin-cliversion
-	return "v0.0.1"
-}
-
-func (p *Client) SetLogger(logger zerolog.Logger) {
-	p.logger = logger
-}
-
-func (p *Client) Initialize(ctx context.Context, spec specs.Destination) error {
-	var specPostgreSql PostgreSqlSpec
 	p.spec = spec
 	if err := spec.UnmarshalSpec(&specPostgreSql); err != nil {
-		return fmt.Errorf("failed to unmarshal postgresql spec: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal postgresql spec: %w", err)
 	}
 
 	logLevel, err := pgx.LogLevelFromString(specPostgreSql.PgxLogLevel.String())
 	if err != nil {
-		return fmt.Errorf("failed to parse pgx log level %s: %w", specPostgreSql.PgxLogLevel, err)
+		return nil, fmt.Errorf("failed to parse pgx log level %s: %w", specPostgreSql.PgxLogLevel, err)
 	}
-	// logLevel := specPostgreSql.PgxLogLevel
-	fmt.Println(logLevel)
 	p.logger.Info().Str("pgx_log_level", specPostgreSql.PgxLogLevel.String()).Msg("Initializing postgresql destination")
 
 	pgxConfig, err := pgxpool.ParseConfig(specPostgreSql.ConnectionString)
 	if err != nil {
-		return fmt.Errorf("failed to parse connection string %w", err)
+		return nil, fmt.Errorf("failed to parse connection string %w", err)
 	}
 	pgxConfig.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
 		conn.ConnInfo().RegisterDataType(pgtype.DataType{Value: &pgxUUID.UUID{}, Name: "uuid", OID: pgtype.UUIDOID})
@@ -109,15 +91,19 @@ func (p *Client) Initialize(ctx context.Context, spec specs.Destination) error {
 	pgxConfig.ConnConfig.LogLevel = logLevel
 	p.conn, err = pgxpool.ConnectConfig(ctx, pgxConfig)
 	if err != nil {
-		return fmt.Errorf("failed to connect to postgresql: %w", err)
+		return nil, fmt.Errorf("failed to connect to postgresql: %w", err)
 	}
 
 	p.currentDatabaseName, err = p.currentDatabase()
 	if err != nil {
-		return fmt.Errorf("failed to get current database: %w", err)
+		return nil, fmt.Errorf("failed to get current database: %w", err)
 	}
 	p.currentSchemaName = "public"
-	return nil
+	return p, nil
+}
+
+func (p *Client) SetLogger(logger zerolog.Logger) {
+	p.logger = logger
 }
 
 func (p *Client) createTableIfNotExist(ctx context.Context, table *schema.Table) error {
@@ -376,7 +362,7 @@ func (p *Client) Write(ctx context.Context, table string, data map[string]interf
 	return nil
 }
 
-func (*Client) ExampleConfig() string {
+func ExampleConfig() string {
 	return `
 connection_string: "postgresql://user:password@localhost:5432/dbname"
 `

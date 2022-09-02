@@ -9,6 +9,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"github.com/cloudquery/plugin-sdk/plugins"
 	"io"
 	"os"
 	"os/exec"
@@ -185,14 +186,22 @@ func (p *PluginManager) downloadSourceGitHub(ctx context.Context, spec specs.Sou
 	return pluginPath, nil
 }
 
-// NewDestination Plugin downloads the plugin, spanws the process (if needed)
-// and return a new client. The calee is responsible for closing the plugin.
+// NewDestinationPlugin downloads the plugin, spawns the process (if needed)
+// and returns a new client. The caller is responsible for closing the plugin.
 func (p *PluginManager) NewDestinationPlugin(ctx context.Context, spec specs.Destination) (*DestinationPlugin, error) {
 	pl := DestinationPlugin{}
 	// some destination plugins are compiled in for simplicity (so no need to download them and spawn grpc server)
 	switch spec.Name {
 	case "postgresql":
-		pl.client = clients.NewLocalDestinationClient(postgresql.NewClient(p.logger))
+		newExecClient := func(ctx context.Context, logger zerolog.Logger, spec specs.Destination) (plugins.DestinationClient, error) {
+			c, err := postgresql.NewClient(ctx, logger, spec)
+			return c, err
+		}
+		pg := plugins.NewDestinationPlugin(spec.Name, spec.Version, newExecClient,
+			plugins.WithDestinationLogger(p.logger),
+			plugins.WithDestinationExampleConfig(postgresql.ExampleConfig()),
+		)
+		pl.client = clients.NewLocalDestinationClient(pg)
 		return &pl, nil
 	default:
 		return nil, fmt.Errorf("unknown destination plugin: %s", spec.Name)
